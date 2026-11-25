@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mini Dictionary</title>
+<style>
+body{margin:0;padding:12px;font-family:Arial,sans-serif;background:#fff;color:#222;text-align:center}
+h2{color:#1769aa;font-size:21px;margin:20px 0}
+select,input{width:100%;height:40px;margin:6px 0;padding:7px;font-size:15px;border:1px solid #aaa;border-radius:6px;box-sizing:border-box}
+button{padding:11px 12px;margin:5px 2px;border:0;border-radius:6px;font-size:13px;font-weight:bold}
+.search{background:#1769aa;color:white}
+#result{margin-top:15px;padding:12px;background:#f1f6fb;border-radius:8px;text-align:left;font-size:16px;line-height:1.7;overflow-wrap:anywhere}
+#history{display:none;text-align:left;margin-top:15px}
+.item{padding:9px;border-bottom:1px solid #ddd;font-size:14px}
+</style>
+</head>
+<body>
+
+<h2>📖 MINI DICTIONARY</h2>
+
+<select id="from">
+<option value="en">English</option>
+<option value="hi">Hindi</option>
+<option value="kn">Kannada</option>
+<option value="te">Telugu</option>
+<option value="ta">Tamil</option>
+</select>
+
+<div style="margin:5px">TO ↓</div>
+
+<select id="to">
+<option value="te">Telugu</option>
+<option value="en">English</option>
+<option value="hi">Hindi</option>
+<option value="kn">Kannada</option>
+<option value="ta">Tamil</option>
+</select>
+
+<input id="word" type="text" placeholder="Enter a word">
+
+<button class="search" onclick="searchWord()">SEARCH</button>
+<button onclick="clearWord()">CLEAR</button>
+<button onclick="showHistory()">HISTORY</button>
+
+<div id="result">Select languages and enter a word.</div>
+
+<div id="history">
+<h3>Search History</h3>
+<div id="historyList"></div>
+<button onclick="clearHistory()">CLEAR HISTORY</button>
+</div>
+
+<script>
+const word=document.getElementById("word");
+const result=document.getElementById("result");
+
+async function searchWord(oldWord){
+let w=(oldWord||word.value).trim();
+if(!w){result.textContent="Please enter a word";return}
+word.value=w;
+result.textContent="Searching...";
+
+let from=document.getElementById("from").value;
+let to=document.getElementById("to").value;
+
+if(from===to){result.textContent="Choose two different languages.";return}
+
+try{
+let url="https://api.mymemory.translated.net/get?q="+encodeURIComponent(w)+"&langpair="+from+"|"+to;
+let response=await fetch(url);
+let data=await response.json();
+let answer=data.responseData.translatedText;
+
+if(!answer){result.textContent="Meaning not found.";return}
+
+result.innerHTML="";
+let title=document.createElement("b");
+title.textContent="Word: "+w;
+let meaning=document.createElement("div");
+meaning.textContent="Meaning: "+answer;
+result.appendChild(title);
+result.appendChild(document.createElement("br"));
+result.appendChild(meaning);
+
+let history=JSON.parse(localStorage.getItem("dictHistory")||"[]");
+history=history.filter(x=>x.word!==w||x.from!==from||x.to!==to);
+history.unshift({word:w,from:from,to:to});
+localStorage.setItem("dictHistory",JSON.stringify(history.slice(0,20)));
+
+}catch(e){
+result.textContent="Connection failed. Try again.";
+}
+}
+
+function clearWord(){
+word.value="";
+result.textContent="Enter another word.";
+word.focus();
+}
+
+function showHistory(){
+let box=document.getElementById("history");
+box.style.display=box.style.display==="block"?"none":"block";
+let list=JSON.parse(localStorage.getItem("dictHistory")||"[]");
+let area=document.getElementById("historyList");
+area.innerHTML="";
+if(list.length===0){area.textContent="No history";return}
+list.forEach(item=>{
+let row=document.createElement("div");
+row.className="item";
+row.textContent=item.word+" ("+item.from+" → "+item.to+")";
+row.onclick=()=>{
+document.getElementById("from").value=item.from;
+document.getElementById("to").value=item.to;
+searchWord(item.word);
+};
+area.appendChild(row);
+});
+}
+
+function clearHistory(){
+localStorage.removeItem("dictHistory");
+document.getElementById("historyList").textContent="History cleared";
+}
+</script>
+</body>
+</html>
